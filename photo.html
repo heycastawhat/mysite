@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Photos</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* Minimal gallery-specific styles that complement the site's CSS */
+    .pg-wrapper{max-width:1200px;margin:18px auto;padding:18px}
+    .pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .pg-card{border-radius:10px;overflow:hidden;background:var(--card,#fff);box-shadow:0 6px 20px rgba(2,6,23,0.06);display:flex;align-items:center;justify-content:center}
+    .pg-card img{width:100%;height:100%;object-fit:cover;display:block}
+    @media (max-width:420px){.pg-grid{grid-template-columns:repeat(2,1fr)}}
+    /* lightbox */
+    .pg-lb{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:999}
+    .pg-lb.open{display:flex}
+    .pg-lb img{max-width:95%;max-height:95%;border-radius:8px}
+    .pg-close{position:fixed;right:18px;top:18px;background:#fff;border-radius:999px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .pg-close:after{content:'✕';font-size:18px;color:#222}
+  </style>
+</head>
+<body>
+  <main class="pg-wrapper">
+    <h1>Photos</h1>
+    <p class="meta">Auto-updating gallery — add or remove files in <code>photogallery/</code> and run the generator.</p>
+
+    <div id="grid" class="pg-grid" aria-live="polite"></div>
+  </main>
+
+  <div id="lightbox" class="pg-lb" role="dialog" aria-hidden="true">
+    <div class="pg-close" id="closeBtn" title="Close"></div>
+    <img id="lbImg" src="" alt="">
+  </div>
+
+  <script>
+    async function loadIndex(){
+      try{
+        const res = await fetch('photogallery/index.json', {cache: 'no-store'});
+        if(!res.ok) throw new Error('index.json not found');
+        const items = await res.json();
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        items.forEach(it => {
+          const card = document.createElement('div');
+          card.className = 'pg-card';
+          const img = document.createElement('img');
+          img.src = 'photogallery/' + encodeURIComponent(it.file);
+          img.alt = it.file;
+          img.loading = 'lazy';
+          img.addEventListener('click', ()=>openLightbox('photogallery/' + it.file, it.file));
+          card.appendChild(img);
+          grid.appendChild(card);
+        });
+      }catch(e){
+        document.getElementById('grid').innerHTML = '<p style="padding:18px;color:#922">Could not load gallery index. Run the generator script or check console for errors.</p>';
+        console.error(e);
+      }
+    }
+
+    function openLightbox(src, alt){
+      const lb = document.getElementById('lightbox');
+      const img = document.getElementById('lbImg');
+      img.src = src;
+      img.alt = alt;
+      lb.classList.add('open');
+      lb.setAttribute('aria-hidden','false');
+    }
+    function closeLightbox(){
+      const lb = document.getElementById('lightbox');
+      const img = document.getElementById('lbImg');
+      img.src = '';
+      img.alt = '';
+      lb.classList.remove('open');
+      lb.setAttribute('aria-hidden','true');
+    }
+
+    document.getElementById('lightbox').addEventListener('click', (e)=>{
+      if(e.target.id === 'lightbox' || e.target.id === 'closeBtn') closeLightbox();
+    });
+    window.addEventListener('keydown', e=>{ if(e.key === 'Escape') closeLightbox(); });
+
+    loadIndex();
+  </script>
+</body>
+</html>
